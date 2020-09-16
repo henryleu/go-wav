@@ -15,13 +15,6 @@ type WriterParam struct {
 	BitsPerSample int
 }
 
-// // Debug prints debug info
-// func (wp WriterParam) Debug() {
-// 	log.Printf("Channel:\t%v\n", wp.Channel)
-// 	log.Printf("SampleRate:\t%v\n", wp.SampleRate)
-// 	log.Printf("BitsPerSample:\t%v\n", wp.BitsPerSample)
-// }
-
 // Writer defines a writer to write data to a wave file
 type Writer struct {
 	out            io.WriteCloser // the interface of the created file to write
@@ -70,7 +63,6 @@ func NewWriter(param WriterParam) (*Writer, error) {
 // WriteSample8 writes uint8 slice samples to the writer
 func (w *Writer) WriteSample8(samples []uint8) (int, error) {
 	buf := new(bytes.Buffer)
-
 	for i := 0; i < len(samples); i++ {
 		err := binary.Write(buf, binary.LittleEndian, samples[i])
 		if err != nil {
@@ -84,7 +76,6 @@ func (w *Writer) WriteSample8(samples []uint8) (int, error) {
 // WriteSample16 writes int16 slice samples to the writer
 func (w *Writer) WriteSample16(samples []int16) (int, error) {
 	buf := new(bytes.Buffer)
-
 	for i := 0; i < len(samples); i++ {
 		err := binary.Write(buf, binary.LittleEndian, samples[i])
 		if err != nil {
@@ -107,35 +98,21 @@ func (w *Writer) Write(p []byte) (int, error) {
 		return 0, fmt.Errorf("writing data must be a multiple of %d bytes", blockSize)
 	}
 	num := len(p) / blockSize
-
 	n, err := w.dataChunk.Data.Write(p)
-
 	if err == nil {
 		w.writtenSamples += num
 	}
 	return n, err
 }
 
-type errWriter struct {
-	w   io.Writer
-	err error
-}
-
-func (ew *errWriter) Write(order binary.ByteOrder, data interface{}) {
-	if ew.err != nil {
-		return
-	}
-	ew.err = binary.Write(ew.w, order, data)
-}
-
-// Close closes the created file
+// Close flushes chunks and closes the created file
 func (w *Writer) Close() error {
 	data := w.dataChunk.Data.Bytes()
 	dataSize := uint32(len(data))
 	w.riffChunk.Size = uint32(len(w.riffChunk.ID)) + (8 + w.fmtChunk.Size) + (8 + dataSize)
 	w.dataChunk.Size = dataSize
-
 	ew := &errWriter{w: w.out}
+
 	// riff chunk
 	ew.Write(binary.BigEndian, w.riffChunk.ID)
 	ew.Write(binary.LittleEndian, w.riffChunk.Size)
@@ -150,19 +127,28 @@ func (w *Writer) Close() error {
 	ew.Write(binary.BigEndian, w.dataChunk.ID)
 	ew.Write(binary.LittleEndian, w.dataChunk.Size)
 
+	// check err when writing chunks
 	if ew.err != nil {
 		return ew.err
 	}
 
+	// write wave data
 	_, err := w.out.Write(data)
 	if err != nil {
 		return err
 	}
 
-	err = w.out.Close()
-	if err != nil {
-		return err
-	}
+	return w.out.Close()
+}
 
-	return nil
+type errWriter struct {
+	w   io.Writer
+	err error
+}
+
+func (ew *errWriter) Write(order binary.ByteOrder, data interface{}) {
+	if ew.err != nil {
+		return
+	}
+	ew.err = binary.Write(ew.w, order, data)
 }
