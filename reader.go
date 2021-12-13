@@ -138,7 +138,7 @@ func (rd *Reader) parseRiffChunk() error {
 }
 
 func (rd *Reader) parseFmtChunk() error {
-	rd.input.Seek(riffChunkSize, os.SEEK_SET)
+	rd.input.Seek(riffChunkSize, io.SeekStart)
 
 	// check if it is written as 'fmt'
 	chunkID := make([]byte, 4)
@@ -182,7 +182,7 @@ func (rd *Reader) parseFmtChunk() error {
 }
 
 func (rd *Reader) parseListChunk() error {
-	rd.input.Seek(listChunkOffset, os.SEEK_SET)
+	rd.input.Seek(listChunkOffset, io.SeekStart)
 
 	// check if it is written as 'LIST'
 	chunkID := make([]byte, 4)
@@ -215,7 +215,7 @@ func (rd *Reader) getRiffChunkSizeOffset() int64 {
 }
 
 func (rd *Reader) parseDataChunk() error {
-	originOfDataChunk, _ := rd.input.Seek(rd.getRiffChunkSizeOffset(), os.SEEK_SET)
+	originOfDataChunk, _ := rd.input.Seek(rd.getRiffChunkSizeOffset(), io.SeekStart)
 
 	// check if it is written as "data"
 	chunkID := make([]byte, 4)
