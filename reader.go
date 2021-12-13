@@ -20,7 +20,7 @@ type File interface {
 type Reader struct {
 	input File
 
-	size int64
+	// size int64
 
 	RiffChunk *RiffChunk
 	FmtChunk  *FmtChunk
@@ -58,13 +58,17 @@ func NewReaderFromFile(fileName string) (*Reader, error) {
 
 // NewReader creates a Reader from a io.Reader of a file
 func NewReader(r io.Reader) (*Reader, error) {
-	waveData, err := ioutil.ReadAll(r)
+	buf, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
+	return NewReaderFromBytes(buf)
+}
 
+// NewReaderFromBytes creates a Reader from a byte slice
+func NewReaderFromBytes(buf []byte) (*Reader, error) {
 	reader := new(Reader)
-	reader.input = bytes.NewReader(waveData)
+	reader.input = bytes.NewReader(buf)
 
 	if err := reader.parseRiffChunk(); err != nil {
 		return nil, err
